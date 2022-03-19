@@ -54,7 +54,8 @@ func Lookup(ctx context.Context, hostname, dns_server string) *LookupResult {
 
 func main() {
 	hostname := flag.String("host", "", "host name to look up")
-	full_deadline := time.Second * 10
+	deadline := flag.Int("deadline", 5, "deadline in seconds")
+	full_deadline := time.Second * time.Duration(*deadline)
 	flag.Parse()
 
 	if *hostname == "" {
@@ -62,18 +63,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Second*1))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(full_deadline))
 	defer cancel()
 
 	results := make(chan *LookupResult, len(flag.Args()))
 
 	for _, dns_server := range flag.Args() {
-		go func() {
+		go func(dns_server string) {
 			results <- Lookup(ctx, *hostname, fmt.Sprintf("%s:53", dns_server))
-		}()
+		}(dns_server)
 	}
 
 	errors := 0
+	start := time.Now()
 	for i := 0; i < len(flag.Args()); i++ {
 		select {
 		case lookup := <-results:
@@ -85,6 +87,7 @@ func main() {
 			break
 		}
 	}
+	fmt.Println("Done in", time.Since(start))
 
 	if errors > 0 {
 		os.Exit(CRITICAL)
