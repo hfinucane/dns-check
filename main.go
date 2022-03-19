@@ -32,7 +32,7 @@ func (lr *LookupResult) Print() {
 	}
 }
 
-func Lookup(ctx context.Context, hostname, dns_server string) LookupResult {
+func Lookup(ctx context.Context, hostname, dns_server string) *LookupResult {
 	start := time.Now()
 	r := &net.Resolver{
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -44,7 +44,7 @@ func Lookup(ctx context.Context, hostname, dns_server string) LookupResult {
 	}
 
 	results, err := r.LookupHost(ctx, hostname)
-	return LookupResult{
+	return &LookupResult{
 		Server:  dns_server,
 		Results: results,
 		Time:    time.Since(start),
@@ -65,7 +65,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Second*1))
 	defer cancel()
 
-	results := make(chan LookupResult, len(flag.Args()))
+	results := make(chan *LookupResult, len(flag.Args()))
 
 	for _, dns_server := range flag.Args() {
 		go func() {
