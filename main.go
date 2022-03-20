@@ -35,18 +35,18 @@ func (lr *LookupResult) Print() {
 func Lookup(ctx context.Context, hostname, dns_server string) *LookupResult {
 	start := time.Now()
 	r := &net.Resolver{
+		PreferGo: true,
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-			d := net.Dialer{
-				Timeout: time.Duration(time.Millisecond * 500),
-			}
-			return d.DialContext(ctx, "udp", dns_server)
+			return (&net.Dialer{
+				Timeout: time.Duration(time.Second),
+			}).DialContext(ctx, "udp", dns_server)
 		},
 	}
 
-	results, err := r.LookupHost(ctx, hostname)
+	ips, err := r.LookupHost(ctx, hostname)
 	return &LookupResult{
 		Server:  dns_server,
-		Results: results,
+		Results: ips,
 		Time:    time.Since(start),
 		Error:   err,
 	}
