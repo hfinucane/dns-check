@@ -37,8 +37,14 @@ func Lookup(ctx context.Context, hostname, dns_server string) *LookupResult {
 	r := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			timeout := time.Second * 1
+			deadline, ok := ctx.Deadline()
+			if ok {
+				timeout = time.Until(deadline)
+			}
+
 			return (&net.Dialer{
-				Timeout: time.Duration(time.Second),
+				Timeout: timeout,
 			}).DialContext(ctx, "udp", dns_server)
 		},
 	}
@@ -55,6 +61,8 @@ func Lookup(ctx context.Context, hostname, dns_server string) *LookupResult {
 func main() {
 	hostname := flag.String("host", "", "host name to look up")
 	deadline := flag.Int("deadline", 5, "deadline in seconds")
+	warn_threshold := flag.Int("w", 1, "warn threshold - percent of servers failing")
+	critical_threshold := flag.Int("c", 1, "critical threshold - percent of servers failing")
 	full_deadline := time.Second * time.Duration(*deadline)
 	flag.Parse()
 
@@ -90,7 +98,12 @@ func main() {
 	fmt.Println("Done in", time.Since(start))
 
 	if errors > 0 {
-		os.Exit(CRITICAL)
+		error_percent := errors * 100 / len(flag.Args())
+		if error_percent >= *critical_threshold {
+			os.Exit(CRITICAL)
+		} else if error_percent >= *warn_threshold {
+			os.Exit(WARNING)
+		}
 	}
 	os.Exit(OK)
 }
