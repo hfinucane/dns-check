@@ -76,6 +76,11 @@ func main() {
 
 	results := make(chan *LookupResult, len(flag.Args()))
 
+	if len(flag.Args()) == 0 {
+		fmt.Println("Don't forget to list DNS servers to query")
+		os.Exit(UNKNOWN)
+	}
+
 	for _, dns_server := range flag.Args() {
 		go func(dns_server string) {
 			results <- Lookup(ctx, *hostname, fmt.Sprintf("%s:53", dns_server))
